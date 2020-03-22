@@ -43,12 +43,13 @@ class Record(db.Model):
     date_time      = db.Column(db.DateTime)
 
     @classmethod
-    def get_data_site(self, metric, site_name, date_period):
+    def get_data_site(self, metric, site, date_range):
+        """Get the metric values for a date range"""
 
-        site = Site.query.filter_by(name=site_name).first()
-        start_date, end_date = date_period
+        start_date, end_date = date_range
         
         # load only required metric
-        records = Record.query.filter_by(site_id=site.id).filter(Record.date_time.between(start_date, end_date)).options(load_only(metric, 'date_time')).values(metric, 'date_time')
+        records = Record.query.filter_by(site_id=site.id).filter(Record.date_time.between(start_date, end_date)).\
+            options(load_only(metric, 'date_time')).values(metric, 'date_time')
 
         return records

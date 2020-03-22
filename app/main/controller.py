@@ -40,11 +40,12 @@ def current_metrics(site_name):
 
 @main_bp.route('/<string:site_name>/<string:metric>/')
 def get_data(site_name, metric):
-
+    """Get the metric values for a date range  """
+    
     response = {}
 
-    all_sites = Site.get_all_sites()
-    if site_name not in [site.name for site in all_sites]:
+    site = Site.query.filter_by(name=site_name.upper()).first()
+    if site is None:
         abort(400, "Invalid site name")
 
     start_date_raw = request.args.get("start_date")
@@ -59,7 +60,7 @@ def get_data(site_name, metric):
     except ValueError as e:
         abort(400, "Incorrect date format")
 
-    records                     = Record.get_data_site(metric, site_name, (start_date, end_date))
+    records                     = Record.get_data_site(metric, site, (start_date, end_date))
     metric_list, date_time_list = list(map(list, zip(*records)))
 
     response = {
