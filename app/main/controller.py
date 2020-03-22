@@ -3,8 +3,10 @@ from app.main import main_bp
 from app.main.exceptions import InvalidSite
 from app.main.models import Site, Record
 from app.main.serializer import RecordSerializer, SiteSerializer
+from datetime import datetime
 from flask import jsonify, request, make_response, abort, Response
 import json
+from operator import itemgetter 
 
 # All sites
 @main_bp.route('/sites')
@@ -32,6 +34,38 @@ def current_metrics(site_name):
         abort(400, str(e))
 
     response = RecordSerializer().dump(latest_metrics)
+
+    return Response(json.dumps(response), 
+        mimetype='application/json')
+
+@main_bp.route('/<string:site_name>/<string:metric>/')
+def get_data(site_name, metric):
+
+    response = {}
+
+    all_sites = Site.get_all_sites()
+    if site_name not in [site.name for site in all_sites]:
+        abort(400, "Invalid site name")
+
+    start_date_raw = request.args.get("start_date")
+    end_date_raw   = request.args.get("end_date")
+
+    if start_date_raw is None or end_date_raw is None:
+        abort(400, "Required data not provided")
+
+    try:
+        start_date = datetime.strptime(start_date_raw, "%Y-%m-%d")
+        end_date   = datetime.strptime(end_date_raw, "%Y-%m-%d")
+    except ValueError as e:
+        abort(400, "Incorrect date format")
+
+    records                     = Record.get_data_site(metric, site_name, (start_date, end_date))
+    metric_list, date_time_list = list(map(list, zip(*records)))
+
+    response = {
+        'date_time' : date_time_list,
+        metric      : metric_list
+    }
 
     return Response(json.dumps(response), 
         mimetype='application/json')

@@ -1,6 +1,8 @@
 from app import db
 from app.main.exceptions import InvalidSite
 from datetime import date
+from sqlalchemy import and_
+from sqlalchemy.orm import load_only
 
 class Site(db.Model):
     __tablename__ = 'site'
@@ -39,3 +41,14 @@ class Record(db.Model):
     wind_speed     = db.Column(db.Float)
     wind_direction = db.Column(db.Float)
     date_time      = db.Column(db.DateTime)
+
+    @classmethod
+    def get_data_site(self, metric, site_name, date_period):
+
+        site = Site.query.filter_by(name=site_name).first()
+        start_date, end_date = date_period
+        
+        # load only required metric
+        records = Record.query.filter_by(site_id=site.id).filter(Record.date_time.between(start_date, end_date)).options(load_only(metric, 'date_time')).values(metric, 'date_time')
+
+        return records
