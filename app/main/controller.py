@@ -3,6 +3,7 @@ from app.main import main_bp
 from app.main.exceptions import InvalidSite
 from app.main.models import Site, Record
 from app.main.serializer import RecordSerializer, SiteSerializer
+from app.util.basic import compute_stats
 from datetime import datetime
 from flask import jsonify, request, make_response, abort, Response
 import json
@@ -29,7 +30,7 @@ def current_metrics(site_name):
     response = {}
     
     try:
-        latest_metrics = Site.get_current_metrics(site_name)
+        latest_metrics = Site.get_current_metrics_records(site_name)
     except InvalidSite as e:
         abort(400, str(e))
 
@@ -66,6 +67,41 @@ def get_data(site_name, metric):
     response = {
         'date_time' : date_time_list,
         metric      : metric_list
+    }
+
+    return Response(json.dumps(response), 
+        mimetype='application/json')
+
+@main_bp.route('/<string:site_name>/stats')
+def get_stats_records(site_name):
+    """Get the the stats for all metrics for a date range  """
+    
+    response = {}
+
+    site = Site.query.filter_by(name=site_name.upper()).first()
+    if site is None:
+        abort(400, "Invalid site name")
+
+    start_date_raw = request.args.get("start_date")
+    end_date_raw   = request.args.get("end_date")
+
+    if start_date_raw is None or end_date_raw is None:
+        abort(400, "Required data not provided")
+
+    try:
+        start_date = datetime.strptime(start_date_raw, "%Y-%m-%d")
+        end_date   = datetime.strptime(end_date_raw, "%Y-%m-%d")
+    except ValueError as e:
+        abort(400, "Incorrect date format")
+
+    records = site.get_stats_records((start_date, end_date))
+    temperature_list, humidity_list, wind_speed_list, wind_direction_list = list(map(list, zip(*records)))
+
+    response = {
+        "temperature"    : compute_stats(temperature_list),
+        "humidity"       : compute_stats(humidity_list),
+        "wind_direction" : compute_stats(wind_direction_list),
+        "wind_speed"     : compute_stats(wind_speed_list)
     }
 
     return Response(json.dumps(response), 

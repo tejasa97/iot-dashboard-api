@@ -21,7 +21,7 @@ class Site(db.Model):
         return sites
 
     @classmethod
-    def get_current_metrics(self, site_name):
+    def get_current_metrics_records(self, site_name):
         """ Get the latest metrics of a site """
         try:
             site = Site.query.filter_by(name=site_name).first()
@@ -30,6 +30,16 @@ class Site(db.Model):
             raise InvalidSite(site_name)
 
         return latest_record
+
+    def get_stats_records(self, date_range):
+
+        start_date, end_date = date_range
+
+        records = Record.query.filter_by(site_id=self.id).filter(Record.date_time.between(start_date, end_date)).\
+            values('temperature', 'humidity', 'wind_speed', 'wind_direction')
+
+        return records
+
 
 class Record(db.Model):
     __tablename__ = 'record'
